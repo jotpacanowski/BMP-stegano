@@ -6,6 +6,7 @@
 #include "bmp_headers.h"
 #include "bmp_dumping.h"
 #include "histogram.h"
+#include "steganography.h"
 
 BITMAPINFOHEADER infoh;
 BITMAPFILEHEADER fileh;
@@ -175,6 +176,36 @@ int main(int argc, char** argv){
 
 	fprintf(stderr, "Written grayscale image to %s\n", argv[2]);
 
+	}
+
+	// Steganography decoding
+
+	printf("Decode steganography? (Y/n) ");
+	char c;
+	scanf(" %c", &c);
+	if(c == 'Y')
+		main_decode(pixmap_data, pixmap_bytes);
+
+	// Steganography encoding
+	if(argc == 4){
+		fprintf(stderr, "Encoding steganography\n");
+		char* enc = main_encode(pixmap_data, pixmap_bytes, argv[3]);
+
+		FILE* gf = fopen(argv[2], "wb");
+		if(gf == NULL){
+			perror("Failed to open output file.");
+			return 2;
+		}
+
+		size_t oldoffset = fileh.bfOffBits;
+		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+		fwrite(&fileh, sizeof(BITMAPFILEHEADER), 1, gf);
+		fwrite(&infoh, sizeof(BITMAPINFOHEADER), 1, gf);
+		fileh.bfOffBits = oldoffset;
+
+		fwrite(enc, pixmap_bytes, 1, gf);
+		fclose(gf);
+		free(enc);
 	}
 
 	// Cleanup
