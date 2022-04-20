@@ -43,6 +43,8 @@ void verify_infoh(BITMAPINFOHEADER *x){
 		puts("biPlanes is not 1");
 }
 
+void convert_to_grayscale(FILE*f, unsigned char*row, size_t row_len);
+
 int main(int argc, char** argv){
 	if(argc < 2){
 		puts("wrong/no filename");
@@ -133,8 +135,64 @@ int main(int argc, char** argv){
 
 	histogram_finalize(h);
 
+	// Grayscale conversion
+	if(argc < 3){
+		fprintf(stderr, "No output filename for grayscale conversion\n");
+		// free(pixmap_data);
+		// return 1;
+	}else{
+
+	FILE* gf = fopen(argv[2], "wb");
+	if(gf == NULL){
+		perror("Failed to open output file.");
+		//
+		return 2;
+	}
+
+	// Write grayscale headers (RGB) - copy
+
+	{
+		size_t oldoffset = fileh.bfOffBits;
+		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+		fwrite(&fileh, sizeof(BITMAPFILEHEADER), 1, gf);
+		fwrite(&infoh, sizeof(BITMAPINFOHEADER), 1, gf);
+		fileh.bfOffBits = oldoffset;
+	}
+
+	// Write grayscale row by row
+
+	printf("Padding is %zu\n", padding_bytes);
+
+	static const char padbuf[] = "abcdef";
+	for(int i=0; i<infoh.biHeight; i++){
+		convert_to_grayscale(gf, &pixmap_data[ i * pixmap_row_bytes ],
+			pixmap_row_bytes - padding_bytes);
+		if(padding_bytes > 0)
+			fwrite(&padbuf[0], padding_bytes, 1, gf);
+	}
+
+	fclose(gf);
+
+	fprintf(stderr, "Written grayscale image to %s\n", argv[2]);
+
+	}
+
 	// Cleanup
 
 	free(pixmap_data);
 	return 0;
+}
+
+void convert_to_grayscale(FILE*f, unsigned char*row, size_t row_len)
+{
+	// write row_len bytes, 24-bit BGR
+	for(int i=0; i < row_len; i += 3){
+		uint8_t b = row[i+0];
+		uint8_t g = row[i+1];
+		uint8_t r = row[i+2];
+		uint16_t avg = b+g+r;
+		avg /= 3;
+		uint8_t buf[3] = {avg, avg, avg};
+		fwrite(buf, 3, 1, f);
+	}
 }
