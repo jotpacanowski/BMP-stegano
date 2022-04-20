@@ -49,15 +49,15 @@ uint8_t* main_encode(const uint8_t* pixmap_data, size_t pixmap_bytes, const char
 			break;
 
 		uint64_t buf = *p;
-		printf("Before: %llx \t", buf);
+		// printf("Before: %llx \t", buf);
 		uint64_t mask = decode_byte_to_bits(*sptr);
-		printf(" %016llx (byte %hhu)\n", mask, *sptr);
+		// printf(" %016llx (byte %hhu)\n", mask, *sptr);
 		sptr++;
 
 		buf &= 0xfefefefefefefefe;
 		buf |= mask;
 
-		printf("After : %llx \n", buf);
+		// printf("After : %llx \n", buf);
 		*p = buf;
 		p++;
 	}
@@ -79,11 +79,12 @@ void main_decode(const uint8_t* pixmap_data, size_t pixmap_bytes)
 		*decoded = byte;
 		decoded++;
 
-		if(!isalnum(byte))
+		if(!isalnum(byte) && byte != ' ')
 			break;
 
 		printf("%c", byte);
 		// printf("%hhu ", byte);
 	}
 	printf("\n");
+	printf("%s\n", decoded_buf); // May print out garbage
 }
