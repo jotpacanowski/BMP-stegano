@@ -11,7 +11,8 @@
 BITMAPINFOHEADER infoh;
 BITMAPFILEHEADER fileh;
 
-void verify_fileh(BITMAPFILEHEADER *x){
+void verify_fileh(BITMAPFILEHEADER *x)
+{
 	if(x->bfType != 0x424d) // byte-swapped "BM"
 		puts("File magic is OK (BM)");
 	else
@@ -27,17 +28,14 @@ void verify_fileh(BITMAPFILEHEADER *x){
 			" (file off %#x to %#x)\n",
 			x->bfOffBits - 14 - 40, 54, x->bfOffBits);
 
-	printf("btw, both headers take %u bytes.\n",
+	printf("Both headers take %zu bytes.\n",
 		sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER));
 }
 
-uint32_t bmp_data_after_headers(BITMAPFILEHEADER *x){
-	return x->bfOffBits - 14 - 40;
-}
-
-void verify_infoh(BITMAPINFOHEADER *x){
+void verify_infoh(BITMAPINFOHEADER *x)
+{
 	if(x->biSize != sizeof(BITMAPINFOHEADER))
-		puts("biSize is meh (not 40) bytes");
+		puts("biSize is not 40 bytes - maybe newer version");
 	else	puts("biSize is OK");
 
 	if(x->biPlanes != 1)
@@ -46,7 +44,8 @@ void verify_infoh(BITMAPINFOHEADER *x){
 
 void convert_to_grayscale(FILE*f, unsigned char*row, size_t row_len);
 
-int main(int argc, char** argv){
+int main(int argc, char** argv)
+{
 	if(argc < 2){
 		puts("wrong/no filename");
 		return 2;
@@ -67,9 +66,6 @@ int main(int argc, char** argv){
 
 	dump_file_header(&fileh);
 	puts("");
-	// TODO: verify size of file
-
-	// fileh.bfOffBits; -- offset of the pixmap
 
 	if(fread(&infoh, sizeof(BITMAPINFOHEADER), 1, f) != 1){
 		perror("Failed to read INFO header");
@@ -85,12 +81,12 @@ int main(int argc, char** argv){
 	verify_infoh(&infoh);
 
 	if(infoh.biCompression != 0){
-		printf("Unsupported compression algorithm (%u)\n", infoh.biCompression);
+		printf("Unsupported compression algorithm %u\n", infoh.biCompression);
 		fclose(f);
 		return 1;
 	}
 	if(infoh.biBitCount != 24){
-		printf("Histogram calculation is unsupported (bitCount=%u)\n", infoh.biBitCount);
+		printf("Unsupported bitmap: bitCount = %u\n", infoh.biBitCount);
 		fclose(f);
 		return 1;
 	}
@@ -98,7 +94,7 @@ int main(int argc, char** argv){
 	// --
 
 	if(fileh.bfOffBits != fileh.bfSize + infoh.biSize){
-		printf("Possible hidden data after headers (size is %zu, offset is %zu)\n",
+		printf("Possible hidden data after headers (size is %u, offset is %u)\n",
 			fileh.bfSize + infoh.biSize, fileh.bfOffBits);
 	}
 
@@ -113,7 +109,7 @@ int main(int argc, char** argv){
 		pixmap_cal_bytes, pixmap_bytes);
 
 	if(pixmap_bytes != pixmap_cal_bytes){
-		puts("???");
+		fprintf(stderr, "Bad image size\n");
 		fclose(f);
 		return 2;
 	}
@@ -126,7 +122,6 @@ int main(int argc, char** argv){
 	}
 
 	fclose(f);
-	perror("OK");
 
 	// Histogram
 
@@ -155,6 +150,7 @@ int main(int argc, char** argv){
 	{
 		size_t oldoffset = fileh.bfOffBits;
 		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+		infoh.biSize = sizeof(BITMAPINFOHEADER); // Old version
 		fwrite(&fileh, sizeof(BITMAPFILEHEADER), 1, gf);
 		fwrite(&infoh, sizeof(BITMAPINFOHEADER), 1, gf);
 		fileh.bfOffBits = oldoffset;
@@ -199,6 +195,7 @@ int main(int argc, char** argv){
 
 		size_t oldoffset = fileh.bfOffBits;
 		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+		infoh.biSize = sizeof(BITMAPINFOHEADER); // Old version
 		fwrite(&fileh, sizeof(BITMAPFILEHEADER), 1, gf);
 		fwrite(&infoh, sizeof(BITMAPINFOHEADER), 1, gf);
 		fileh.bfOffBits = oldoffset;
