@@ -50,7 +50,6 @@ int main(int argc, char** argv)
 		puts("wrong/no filename");
 		return 2;
 	}
-	// TODO: read to memory and then struct pointers
 
 	FILE* f = fopen(argv[1], "rb");
 	if(f == NULL){
@@ -64,8 +63,10 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	dump_file_header(&fileh);
-	puts("");
+	if(argc == 2){
+		dump_file_header(&fileh);
+		puts("");
+	}
 
 	if(fread(&infoh, sizeof(BITMAPINFOHEADER), 1, f) != 1){
 		perror("Failed to read INFO header");
@@ -73,9 +74,10 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	dump_info_header(&infoh);
-
-	puts(" - - - ");
+	if(argc == 2){
+		dump_info_header(&infoh);
+		puts(" - - - ");
+	}
 
 	verify_fileh(&fileh);
 	verify_infoh(&infoh);
@@ -90,8 +92,6 @@ int main(int argc, char** argv)
 		fclose(f);
 		return 1;
 	}
-
-	// --
 
 	if(fileh.bfOffBits != fileh.bfSize + infoh.biSize){
 		printf("Possible hidden data after headers (size is %u, offset is %u)\n",
@@ -125,73 +125,66 @@ int main(int argc, char** argv)
 
 	// Histogram
 
-	HIST* h = histogram_init(pixmap_row_bytes - padding_bytes); // Usable bytes
-	for(int i=0; i<infoh.biHeight; i++)
-		histogram_process_row(h, &pixmap_data[ i * pixmap_row_bytes ]);
+	if(argc == 2){
+		HIST* h = histogram_init(pixmap_row_bytes - padding_bytes); // Usable bytes
 
-	histogram_finalize(h);
+		for(int i=0; i<infoh.biHeight; i++)
+			histogram_process_row(h, &pixmap_data[ i * pixmap_row_bytes ]);
+
+		histogram_finalize(h);
+	}
 
 	// Grayscale conversion
-	if(argc < 3){
-		fprintf(stderr, "No output filename for grayscale conversion\n");
-		// free(pixmap_data);
-		// return 1;
-	}else{
-
-	FILE* gf = fopen(argv[2], "wb");
-	if(gf == NULL){
-		perror("Failed to open output file.");
-		//
-		return 2;
-	}
-
-	// Write grayscale headers (RGB) - copy
-
-	{
-		size_t oldoffset = fileh.bfOffBits;
-		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-		infoh.biSize = sizeof(BITMAPINFOHEADER); // Old version
-		fwrite(&fileh, sizeof(BITMAPFILEHEADER), 1, gf);
-		fwrite(&infoh, sizeof(BITMAPINFOHEADER), 1, gf);
-		fileh.bfOffBits = oldoffset;
-	}
-
-	// Write grayscale row by row
-
-	printf("Padding is %zu\n", padding_bytes);
-
-	static const char padbuf[] = "abcdef";
-	for(int i=0; i<infoh.biHeight; i++){
-		convert_to_grayscale(gf, &pixmap_data[ i * pixmap_row_bytes ],
-			pixmap_row_bytes - padding_bytes);
-		if(padding_bytes > 0)
-			fwrite(&padbuf[0], padding_bytes, 1, gf);
-	}
-
-	fclose(gf);
-
-	fprintf(stderr, "Written grayscale image to %s\n", argv[2]);
-
-	}
-
-	// Steganography decoding
-
-	printf("Decode steganography? (Y/n) ");
-	char c;
-	scanf(" %c", &c);
-	if(c == 'Y')
-		main_decode(pixmap_data, pixmap_bytes);
-
-	// Steganography encoding
-	if(argc == 4){
-		fprintf(stderr, "Encoding steganography\n");
-		char* enc = main_encode(pixmap_data, pixmap_bytes, argv[3]);
-
+	if(argc == 3){
 		FILE* gf = fopen(argv[2], "wb");
 		if(gf == NULL){
 			perror("Failed to open output file.");
 			return 2;
 		}
+
+		// Write grayscale headers (24-bit BGR)
+
+		// size_t oldoffset = fileh.bfOffBits;
+		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+		infoh.biSize = sizeof(BITMAPINFOHEADER); // Old version
+		fwrite(&fileh, sizeof(BITMAPFILEHEADER), 1, gf);
+		fwrite(&infoh, sizeof(BITMAPINFOHEADER), 1, gf);
+
+		// Write grayscale row by row
+
+		static const char padbuf[] = "abcdef";
+		for(int i=0; i<infoh.biHeight; i++){
+			convert_to_grayscale(gf, &pixmap_data[ i * pixmap_row_bytes ],
+				pixmap_row_bytes - padding_bytes);
+			if(padding_bytes > 0)
+				fwrite(&padbuf[0], padding_bytes, 1, gf);
+		}
+
+		fclose(gf);
+		fprintf(stderr, "Written grayscale image to %s\n", argv[2]);
+	}else if(argc < 3){
+		fprintf(stderr, "No output filename for grayscale conversion\n");
+	}
+
+	// Steganography decoding
+	if(argc == 3){
+		printf("Decode steganography? (Y/n) ");
+		char c;
+		scanf(" %c", &c);
+		if(c == 'Y')
+			main_decode(pixmap_data, pixmap_bytes);
+	}
+
+	// Steganography encoding
+	if(argc == 4){
+		FILE* gf = fopen(argv[2], "wb");
+		if(gf == NULL){
+			perror("Failed to open output file.");
+			return 2;
+		}
+
+		fprintf(stderr, "Encoding steganography\n");
+		char* enc = main_encode(pixmap_data, pixmap_bytes, argv[3]);
 
 		size_t oldoffset = fileh.bfOffBits;
 		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
