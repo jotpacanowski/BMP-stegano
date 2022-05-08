@@ -20,26 +20,24 @@ void verify_fileh(BITMAPFILEHEADER *x)
 
 	if(x->bfReserved1 != 0 || x->bfReserved2 != 0)
 		puts("Reserved fields are not zero!");
-
-	if(x->bfOffBits == 54)
-		puts("OffsetBits is OK");
-	else
-		printf("pixmap offset: %u bytes may be hidden\n"
-			" (file off %#x to %#x)\n",
-			x->bfOffBits - 14 - 40, 54, x->bfOffBits);
-
-	printf("Both headers take %zu bytes.\n",
-		sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER));
 }
 
 void verify_infoh(BITMAPINFOHEADER *x)
 {
-	if(x->biSize != sizeof(BITMAPINFOHEADER))
-		puts("biSize is not 40 bytes - maybe newer version");
-	else	puts("biSize is OK");
+	if(x->biSize == 40) puts("INFO header biSize is 40 bytes");
+	if(x->biSize == 108) puts("INFO header is v4 - 108 bytes");
+	if(x->biSize == 124) puts("INFO header is v5 - 124 bytes");
+	else
+		puts("INFO header biSize is not in [40, 108, 124]");
 
 	if(x->biPlanes != 1)
 		puts("biPlanes is not 1");
+
+	if(x->biSize >= 108){
+		if(x->bV4CSType == 0x73524742) // LCS_sRGB
+			puts("sRGB color space");
+		else	puts("Color space is not \'sRGB\'");
+	}
 }
 
 void convert_to_grayscale(FILE*f, unsigned char*row, size_t row_len);
@@ -93,9 +91,9 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	if(fileh.bfOffBits != fileh.bfSize + infoh.biSize){
-		printf("Possible hidden data after headers (size is %u, offset is %u)\n",
-			fileh.bfSize + infoh.biSize, fileh.bfOffBits);
+	if(fileh.bfOffBits != sizeof(BITMAPFILEHEADER) + infoh.biSize){
+		printf("Possible hidden data after headers (size is %zu, offset is %u)\n",
+			sizeof(BITMAPFILEHEADER) + infoh.biSize, fileh.bfOffBits);
 	}
 
 	// -- Read pixmap data into memory
