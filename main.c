@@ -167,7 +167,7 @@ int main(int argc, char** argv)
 	}
 
 	// Steganography decoding
-	if(argc == 3){
+	if(argc == 2){
 		printf("Decode steganography? (Y/n) ");
 		char c;
 		scanf(" %c", &c);
@@ -184,7 +184,7 @@ int main(int argc, char** argv)
 		}
 
 		fprintf(stderr, "Encoding steganography\n");
-		char* enc = main_encode(pixmap_data, pixmap_bytes, argv[3]);
+		uint8_t* enc = main_encode(pixmap_data, pixmap_bytes, argv[3]);
 
 		size_t oldoffset = fileh.bfOffBits;
 		fileh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
@@ -207,7 +207,7 @@ int main(int argc, char** argv)
 void convert_to_grayscale(FILE*f, unsigned char*row, size_t row_len)
 {
 	// write row_len bytes, 24-bit BGR
-	for(int i=0; i < row_len; i += 3){
+	for(unsigned int i=0; i < row_len; i += 3){
 		uint8_t b = row[i+0];
 		uint8_t g = row[i+1];
 		uint8_t r = row[i+2];

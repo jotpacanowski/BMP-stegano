@@ -44,20 +44,17 @@ uint8_t* main_encode(const uint8_t* pixmap_data, size_t pixmap_bytes, const char
 
 	// TODO encode text length
 
-	for(int i=0; i < pixmap_bytes && i <= text_len; i++){ // incl. NUL byte
+	for(unsigned int i=0; i < pixmap_bytes && i <= text_len; i++){
 		if(pixmap_bytes - i < 8)
 			break;
 
 		uint64_t buf = *p;
-		// printf("Before: %llx \t", buf);
 		uint64_t mask = decode_byte_to_bits(*sptr);
-		// printf(" %016llx (byte %hhu)\n", mask, *sptr);
 		sptr++;
 
 		buf &= 0xfefefefefefefefe;
 		buf |= mask;
 
-		// printf("After : %llx \n", buf);
 		*p = buf;
 		p++;
 	}
@@ -69,7 +66,7 @@ void main_decode(const uint8_t* pixmap_data, size_t pixmap_bytes)
 	uint8_t *decoded_buf = calloc(pixmap_bytes / 8, 1);
 	uint8_t *decoded = decoded_buf;
 
-	for(int i=0; i < pixmap_bytes; i += 8){
+	for(unsigned int i=0; i < pixmap_bytes; i += 8){
 		if(pixmap_bytes - i < 8)
 			break;
 		uint64_t buf;

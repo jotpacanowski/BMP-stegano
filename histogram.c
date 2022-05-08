@@ -33,7 +33,7 @@ struct HIST* histogram_init(size_t bytes_per_row){
 void histogram_process_row(struct HIST* const state, const unsigned char* raw_row){
 	const size_t bytes = state->row_data_bytes;
 	int rgb = 0;
-	for(int i=0; i<bytes; i++, rgb = (rgb+1)%3){
+	for(unsigned int i=0; i<bytes; i++, rgb = (rgb+1) % 3){
 		int v = raw_row[i] / HISTOGRAM_BINS;
 		switch(rgb){
 			case 0:  // BGR (!)
@@ -59,7 +59,7 @@ void histogram_process_row(struct HIST* const state, const unsigned char* raw_ro
 #define HISTOGRAM_BAR_WIDTH 80 // 60 characters long
 #endif
 
-static void histogram_print_bar(float value, float max_value){
+static void histogram_print_bar(float value){
 	printf(" ");
 	int w = value * HISTOGRAM_BAR_WIDTH / 1.0;
 	if(w == 0 && value > 0){
@@ -76,13 +76,13 @@ static void histogram_print(const char* color, uint64_t* data, uint64_t max_sum)
 	printf("%s\n", color);
 	// printf("Sum is %llu\n", sum);
 	const int step = 256 / HISTOGRAM_BINS;
-	for(int i=0; i<HISTOGRAM_BINS; i++){
+	for(unsigned int i=0; i<HISTOGRAM_BINS; i++){
 		// double value = data[i];
 		// value /= sum;
 		double value = 1.f * (double)data[i] / (double)max_sum;
 		//   -- %llu  , data[i]
 		printf("   %3u-%-3u: %5.2f %% ", i*step, (i+1)*step - 1, 100*value);
-		histogram_print_bar(value, max_sum);
+		histogram_print_bar(value);
 	}
 	puts("");
 }
